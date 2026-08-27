@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/estilos.css">
+  <title>Teclados</title>
+</head>
+
+<body>
+  <header>
+    <h1>TecladitosApp - Administración</h1>
+    <div class="usuario-header">
+      <button type="button" id="btn-logout" class="btn-logout">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="index.html">Inicio</a></li>
+      <li><a href="teclados.html">Administrar teclados</a></li>
+      <li><a href="#" id="enlace-logout">Cerrar sesión</a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <section class="panel">
+      <h2 id="titulo-formulario">Registrar teclado</h2>
+
+      <form id="form-teclado" class="form-grid">
+
+        <div class="campo">
+          <label for="marca">Marca</label>
+          <input type="text" id="marca" placeholder="Ej: Logitech" required>
+        </div>
+
+        <div class="campo">
+          <label for="modelo">Modelo</label>
+          <input type="text" id="modelo" placeholder="Ej: G Pro X" required>
+        </div>
+
+        <div class="campo">
+          <label for="tipoSwitch">Tipo de switch</label>
+          <input type="text" id="tipoSwitch" placeholder="Ej: Rojo, Azul, Marrón" required>
+        </div>
+
+        <div class="campo">
+          <label for="tamano">Tamaño</label>
+          <select id="tamano">
+            <option value="">Seleccione...</option>
+            <option value="Full size">Full size</option>
+            <option value="TKL">TKL (80%)</option>
+            <option value="75%">75%</option>
+            <option value="65%">65%</option>
+            <option value="60%">60%</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="idioma">Idioma</label>
+          <select id="idioma">
+            <option value="">Seleccione...</option>
+            <option value="Español (Latino)">Español (Latino)</option>
+            <option value="Inglés (US)">Inglés (US)</option>
+            <option value="Inglés (ISO)">Inglés (ISO)</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="conexion">Conexión</label>
+          <select id="conexion">
+            <option value="">Seleccione...</option>
+            <option value="USB-C">USB-C</option>
+            <option value="Bluetooth">Bluetooth</option>
+            <option value="Inalámbrico 2.4GHz">Inalámbrico 2.4GHz</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="estado">Estado</label>
+          <select id="estado">
+            <option value="Disponible">Disponible</option>
+            <option value="Agotado">Agotado</option>
+            <option value="Reservado">Reservado</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="precio">Precio</label>
+          <input type="number" id="precio" placeholder="Ej: 65000" min="0" step="0.01" required>
+        </div>
+
+        <div class="campo">
+          <label for="imagen">Foto del teclado</label>
+          <input type="file" id="imagen" accept="image/*">
+        </div>
+
+        <div class="campo campo-check">
+          <input type="checkbox" id="iluminacion">
+          <label for="iluminacion">Tiene iluminación RGB</label>
+        </div>
+
+        <div class="acciones-form">
+          <button type="submit" id="btn-guardar-teclado">Guardar teclado</button>
+          <button type="button" id="btn-cancelar-edicion">Cancelar edición</button>
+        </div>
+
+      </form>
+
+      <div id="mensaje"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Filtrar inventario</h2>
+
+      <div class="filtros">
+        <div class="campo">
+          <label for="filtro-switch">Tipo de switch</label>
+          <input type="text" id="filtro-switch" placeholder="Ej: rojo">
+        </div>
+
+        <div class="campo">
+          <label for="filtro-marca">Marca</label>
+          <input type="text" id="filtro-marca" placeholder="Ej: logitech">
+        </div>
+
+        <button type="button" id="btn-limpiar-filtros">Limpiar filtros</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Inventario de teclados</h2>
+      <div id="grid-teclados" class="grid-teclados"></div>
+    </section>
+
+  </main>
+
+  <script>
+    const API_TECLADOS = '/api/teclados';
+
+    const formTeclado = document.getElementById('form-teclado');
+    const tituloFormulario = document.getElementById('titulo-formulario');
+    const btnGuardarTeclado = document.getElementById('btn-guardar-teclado');
+    const btnCancelarEdicion = document.getElementById('btn-cancelar-edicion');
+    const gridTeclados = document.getElementById('grid-teclados');
+    const mensaje = document.getElementById('mensaje');
+    const inputImagen = document.getElementById('imagen');
+
+    const filtroSwitch = document.getElementById('filtro-switch');
+    const filtroMarca = document.getElementById('filtro-marca');
+    const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
+
+    const btnLogout = document.getElementById('btn-logout');
+    const enlaceLogout = document.getElementById('enlace-logout');
+
+    let idEnEdicion = null;
+    let imagenExistenteEnEdicion = ''; 
+    let temporizadorFiltro = null;
+
+    document.addEventListener('DOMContentLoaded', iniciarPagina);
+
+    async function iniciarPagina() {
+      if (!obtenerToken()) {
+        regresarAlLogin();
+        return;
+      }
+
+      configurarEventos();
+      await cargarTeclados();
+    }
+
+    function configurarEventos() {
+      formTeclado.addEventListener('submit', manejarEnvioFormulario);
+      btnCancelarEdicion.addEventListener('click', cancelarEdicion);
+
+      filtroSwitch.addEventListener('input', () => programarRecarga());
+      filtroMarca.addEventListener('input', () => programarRecarga());
+
+      btnLimpiarFiltros.addEventListener('click', () => {
+        filtroSwitch.value = '';
+        filtroMarca.value = '';
+        cargarTeclados();
+      });
+
+      btnLogout.addEventListener('click', cerrarSesion);
+      enlaceLogout.addEventListener('click', (evento) => {
+        evento.preventDefault();
+        cerrarSesion();
+      });
+    }
+
+    function programarRecarga() {
+      clearTimeout(temporizadorFiltro);
+      temporizadorFiltro = setTimeout(cargarTeclados, 350);
+    }
+
+    function obtenerToken() {
+      return localStorage.getItem('token');
+    }
+
+    function obtenerHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + obtenerToken()
+      };
+    }
+
+    function regresarAlLogin() {
+      localStorage.removeItem('token');
+      window.location.replace('login.html');
+    }
+
+    function cerrarSesion() {
+      localStorage.removeItem('token');
+      window.location.replace('login.html');
+    }
+
+    async function procesarRespuesta(respuesta) {
+      if (respuesta.status === 401 || respuesta.status === 403) {
+        regresarAlLogin();
+        throw new Error('La sesión expiró');
+      }
+
+      let datos = {};
+      try { datos = await respuesta.json(); } catch (error) { datos = {}; }
+
+      if (!respuesta.ok) {
+        throw new Error(datos.error || 'No fue posible completar la operación');
+      }
+
+      return datos;
+    }
+
+    async function cargarTeclados() {
+      try {
+        const parametros = new URLSearchParams();
+
+        if (filtroSwitch.value.trim()) {
+          parametros.append('tipoSwitch', filtroSwitch.value.trim());
+        }
+
+        if (filtroMarca.value.trim()) {
+          parametros.append('marca', filtroMarca.value.trim());
+        }
+
+        const url = API_TECLADOS + (parametros.toString() ? '?' + parametros.toString() : '');
+
+        const respuesta = await fetch(url, {
+          method: 'GET',
+          headers: obtenerHeaders()
+        });
+
+        const teclados = await procesarRespuesta(respuesta);
+        mostrarTeclados(teclados);
+
+      } catch (error) {
+        console.error(error);
+        mostrarMensaje(error.message, true);
+      }
+    }
+
+    function mostrarTeclados(teclados) {
+      gridTeclados.replaceChildren();
+
+      if (teclados.length === 0) {
+        const aviso = document.createElement('div');
+        aviso.className = 'sin-teclados';
+        aviso.textContent = 'No hay teclados que coincidan con los filtros.';
+        gridTeclados.appendChild(aviso);
+        return;
+      }
+
+      teclados.forEach((teclado) => {
+        gridTeclados.appendChild(crearTarjetaTeclado(teclado));
+      });
+    }
+
+    function crearTarjetaTeclado(teclado) {
+      const tarjeta = document.createElement('article');
+      tarjeta.className = 'tarjeta-teclado';
+
+
+      console.log('Teclado:', teclado.marca, teclado.modelo, '| imagen:', teclado.imagen ? teclado.imagen.substring(0, 60) + '...' : teclado.imagen);
+
+      if (teclado.imagen) {
+        const foto = document.createElement('img');
+        foto.src = teclado.imagen;
+        foto.alt = teclado.marca + ' ' + teclado.modelo;
+        foto.className = 'imagen-teclado';
+        foto.loading = 'lazy';
+        foto.onerror = () => console.error('No se pudo cargar la imagen de', teclado.marca, teclado.modelo, '- valor recibido:', teclado.imagen);
+        tarjeta.appendChild(foto);
+      } else {
+        console.warn('El teclado', teclado.marca, teclado.modelo, 'no tiene campo imagen (o está vacío)');
+      }
+
+      const titulo = document.createElement('h3');
+      titulo.textContent = teclado.marca + ' ' + teclado.modelo;
+
+      const filas = [
+        ['Switch', teclado.tipoSwitch],
+        ['Tamaño', teclado.tamaño || '—'],
+        ['Idioma', teclado.idioma || '—'],
+        ['Conexión', teclado.conexion || '—'],
+        ['Iluminación', teclado.iluminacion ? 'Sí' : 'No'],
+        ['Precio', formatearPrecio(teclado.precio)]
+      ];
+
+      tarjeta.appendChild(titulo);
+
+      filas.forEach(([etiqueta, valor]) => {
+        const fila = document.createElement('div');
+        fila.className = 'fila';
+        fila.innerHTML = '<span>' + etiqueta + '</span><span></span>';
+        fila.querySelector('span:last-child').textContent = valor;
+        tarjeta.appendChild(fila);
+      });
+
+      const estado = document.createElement('span');
+      estado.textContent = teclado.estado || 'Disponible';
+      estado.className = 'etiqueta-estado ' + obtenerClaseEstado(teclado.estado);
+      tarjeta.appendChild(estado);
+
+      const botones = document.createElement('div');
+      botones.className = 'botones-tarjeta';
+
+      const btnEditar = document.createElement('button');
+      btnEditar.type = 'button';
+      btnEditar.className = 'btn-editar';
+      btnEditar.textContent = 'Editar';
+      btnEditar.addEventListener('click', () => cargarTecladoEnFormulario(teclado));
+
+      const btnEliminar = document.createElement('button');
+      btnEliminar.type = 'button';
+      btnEliminar.className = 'btn-eliminar';
+      btnEliminar.textContent = 'Eliminar';
+      btnEliminar.addEventListener('click', () => eliminarTeclado(teclado._id));
+
+      botones.appendChild(btnEditar);
+      botones.appendChild(btnEliminar);
+      tarjeta.appendChild(botones);
+
+      return tarjeta;
+    }
+
+    function obtenerClaseEstado(estado) {
+      if (estado === 'Disponible') return 'estado-disponible';
+      if (estado === 'Agotado') return 'estado-agotado';
+      return 'estado-otro';
+    }
+
+    function formatearPrecio(precio) {
+      const valor = Number(precio) || 0;
+      return '₡' + valor.toLocaleString('es-CR');
+    }
+
+    function cargarTecladoEnFormulario(teclado) {
+      idEnEdicion = teclado._id;
+      imagenExistenteEnEdicion = teclado.imagen || ''; 
+
+      document.getElementById('marca').value = teclado.marca || '';
+      document.getElementById('modelo').value = teclado.modelo || '';
+      document.getElementById('tipoSwitch').value = teclado.tipoSwitch || '';
+      document.getElementById('tamano').value = teclado.tamaño || '';
+      document.getElementById('idioma').value = teclado.idioma || '';
+      document.getElementById('conexion').value = teclado.conexion || '';
+      document.getElementById('estado').value = teclado.estado || 'Disponible';
+      document.getElementById('precio').value = teclado.precio || '';
+      document.getElementById('iluminacion').checked = !!teclado.iluminacion;
+      inputImagen.value = ''; 
+
+      tituloFormulario.textContent = 'Editar teclado';
+      btnGuardarTeclado.textContent = 'Actualizar teclado';
+      btnCancelarEdicion.style.display = 'inline-block';
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelarEdicion() {
+      idEnEdicion = null;
+      imagenExistenteEnEdicion = '';
+      formTeclado.reset();
+      document.getElementById('estado').value = 'Disponible';
+
+      tituloFormulario.textContent = 'Registrar teclado';
+      btnGuardarTeclado.textContent = 'Guardar teclado';
+      btnCancelarEdicion.style.display = 'none';
+    }
+    
+    function convertirImagenBase64(archivo) {
+      return new Promise((resolve, reject) => {
+        const lector = new FileReader();
+
+        lector.onload = () => {
+          const img = new Image();
+
+          img.onload = () => {
+            const ANCHO_MAXIMO = 500;
+            const escala = Math.min(1, ANCHO_MAXIMO / img.width);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width * escala;
+            canvas.height = img.height * escala;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+          };
+
+          img.onerror = () => reject('Error procesando la imagen');
+          img.src = lector.result;
+        };
+
+        lector.onerror = () => reject('Error leyendo imagen');
+        lector.readAsDataURL(archivo);
+      });
+    }
+
+    async function manejarEnvioFormulario(evento) {
+      evento.preventDefault();
+
+      const archivo = inputImagen.files[0];
+      let imagenBase64 = imagenExistenteEnEdicion; 
+
+
+      if (archivo) {
+        try {
+          imagenBase64 = await convertirImagenBase64(archivo);
+        } catch (error) {
+          console.error(error);
+          mostrarMensaje('No se pudo procesar la imagen seleccionada', true);
+          return;
+        }
+      }
+
+      const datosTeclado = {
+        marca: document.getElementById('marca').value.trim(),
+        modelo: document.getElementById('modelo').value.trim(),
+        tipoSwitch: document.getElementById('tipoSwitch').value.trim(),
+        tamaño: document.getElementById('tamano').value,
+        idioma: document.getElementById('idioma').value,
+        conexion: document.getElementById('conexion').value,
+        estado: document.getElementById('estado').value,
+        precio: Number(document.getElementById('precio').value),
+        iluminacion: document.getElementById('iluminacion').checked,
+        imagen: imagenBase64
+      };
+
+      if (!datosTeclado.marca || !datosTeclado.modelo || !datosTeclado.tipoSwitch) {
+        mostrarMensaje('Marca, modelo y tipo de switch son obligatorios', true);
+        return;
+      }
+
+      btnGuardarTeclado.disabled = true;
+
+      try {
+        const esEdicion = Boolean(idEnEdicion);
+
+        const respuesta = await fetch(
+          esEdicion ? API_TECLADOS + '/' + idEnEdicion : API_TECLADOS,
+          {
+            method: esEdicion ? 'PUT' : 'POST',
+            headers: obtenerHeaders(),
+            body: JSON.stringify(datosTeclado)
+          }
+        );
+
+        await procesarRespuesta(respuesta);
+
+        mostrarMensaje(esEdicion ? 'Teclado actualizado correctamente' : 'Teclado registrado correctamente');
+
+        cancelarEdicion();
+        await cargarTeclados();
+
+      } catch (error) {
+        console.error(error);
+        mostrarMensaje(error.message, true);
+      } finally {
+        btnGuardarTeclado.disabled = false;
+      }
+    }
+
+    async function eliminarTeclado(id) {
+      if (!confirm('¿Seguro que desea eliminar este teclado?')) {
+        return;
+      }
+
+      try {
+        const respuesta = await fetch(API_TECLADOS + '/' + id, {
+          method: 'DELETE',
+          headers: obtenerHeaders()
+        });
+
+        await procesarRespuesta(respuesta);
+
+        mostrarMensaje('Teclado eliminado correctamente');
+        await cargarTeclados();
+
+      } catch (error) {
+        console.error(error);
+        mostrarMensaje(error.message, true);
+      }
+    }
+
+    function mostrarMensaje(texto, esError = false) {
+      mensaje.textContent = texto;
+      mensaje.className = esError ? 'mensaje-error' : 'mensaje-correcto';
+
+      setTimeout(() => {
+        mensaje.textContent = '';
+        mensaje.className = '';
+      }, 3000);
+    }
+  </script>
+
+</body>
+
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+ 
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../css/estilos.css">
+<title>Teclados</title>
+</head>
+ 
+<body>
+ 
+<header>
+  <h1>TecladitosApp - Inicio</h1>
+  <div class="usuario-header">
+    <span id="nombre-header">Cargando usuario...</span>
+    <button type="button" id="btn-logout" class="btn-logout">Cerrar sesión</button>
+  </div>
+</header>
+ 
+<nav>
+  <ul>
+    <li><a href="index.html">Inicio</a></li>
+    <li><a href="teclados.html">Administrar teclados</a></li>
+    <li><a href="#" id="enlace-logout">Cerrar sesión</a></li>
+  </ul>
+</nav>
+ 
+<main>
+  <section class="panel bienvenida">
+    <h2 id="titulo-bienvenida">Bienvenido</h2>
+    <p>Desde este menú puede registrar, consultar, modificar y eliminar teclados de su inventario.</p>
+ 
+    <div id="cargando" class="cargando">Cargando información del usuario...</div>
+ 
+    <div id="datos-usuario" class="datos-usuario" hidden>
+      <div class="dato"><strong>Identificador:</strong><span id="usuario-id"></span></div>
+      <div class="dato"><strong>Nombre:</strong><span id="usuario-nombre"></span></div>
+      <div class="dato"><strong>Correo electrónico:</strong><span id="usuario-correo"></span></div>
+      <div class="dato"><strong>Fecha de registro:</strong><span id="usuario-fecha"></span></div>
+    </div>
+ 
+    <div id="mensaje"></div>
+  </section>
+ 
+  <section class="panel">
+    <h2>Menú principal</h2>
+    <div class="opciones">
+      <article class="tarjeta">
+        <h3>Inventario de teclados</h3>
+        <p>Registre nuevos modelos, filtre por tipo de switch, busque por marca, edite o elimine.</p>
+        <a href="teclados.html">Administrar teclados</a>
+      </article>
+    </div>
+  </section>
+</main>
+ 
+<footer>TecladitosApp lol - Inventario de teclados mecánicos</footer>
+ 
+<script>
+  const nombreHeader = document.getElementById('nombre-header');
+  const tituloBienvenida = document.getElementById('titulo-bienvenida');
+  const contenedorDatos = document.getElementById('datos-usuario');
+  const elementoCargando = document.getElementById('cargando');
+  const mensaje = document.getElementById('mensaje');
+  const btnLogout = document.getElementById('btn-logout');
+  const enlaceLogout = document.getElementById('enlace-logout');
+ 
+  document.addEventListener('DOMContentLoaded', iniciarPagina);
+ 
+  async function iniciarPagina() {
+    configurarEventos();
+    await cargarPerfil();
+  }
+ 
+  function configurarEventos() {
+    btnLogout.addEventListener('click', cerrarSesion);
+    enlaceLogout.addEventListener('click', (evento) => {
+      evento.preventDefault();
+      cerrarSesion();
+    });
+  }
+ 
+  function obtenerToken() {
+    return localStorage.getItem('token');
+  }
+ 
+  function obtenerHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + obtenerToken()
+    };
+  }
+ 
+  async function cargarPerfil() {
+    if (!obtenerToken()) {
+      regresarAlLogin();
+      return;
+    }
+ 
+    try {
+      const respuesta = await fetch('/api/usuario-logueado', {
+        method: 'GET',
+        headers: obtenerHeaders()
+      });
+ 
+      const usuario = await procesarRespuesta(respuesta);
+      mostrarDatosUsuario(usuario);
+ 
+    } catch (error) {
+      console.error(error);
+      elementoCargando.hidden = true;
+      mostrarMensaje(error.message);
+    }
+  }
+ 
+  async function procesarRespuesta(respuesta) {
+    if (respuesta.status === 401 || respuesta.status === 403) {
+      regresarAlLogin();
+      throw new Error('La sesión ha expirado');
+    }
+ 
+    let datos = {};
+    try { datos = await respuesta.json(); } catch (error) { datos = {}; }
+ 
+    if (!respuesta.ok) {
+      throw new Error(datos.error || 'No fue posible completar la operación');
+    }
+ 
+    return datos;
+  }
+ 
+  function mostrarDatosUsuario(usuario) {
+    elementoCargando.hidden = true;
+    contenedorDatos.hidden = false;
+ 
+    const nombre = usuario.nombre || 'Usuario';
+ 
+    nombreHeader.textContent = nombre;
+    tituloBienvenida.textContent = 'Bienvenido, ' + nombre;
+ 
+    document.getElementById('usuario-id').textContent = usuario._id || 'No disponible';
+    document.getElementById('usuario-nombre').textContent = nombre;
+    document.getElementById('usuario-correo').textContent = usuario.correo || 'No disponible';
+    document.getElementById('usuario-fecha').textContent = formatearFecha(usuario.fechaRegistro);
+  }
+ 
+  function formatearFecha(fecha) {
+    if (!fecha) return 'No disponible';
+    const fechaConvertida = new Date(fecha);
+    if (Number.isNaN(fechaConvertida.getTime())) return 'No disponible';
+    return fechaConvertida.toLocaleString('es-CR');
+  }
+ 
+  function cerrarSesion() {
+    localStorage.removeItem('token');
+    window.location.replace('login.html');
+  }
+ 
+  function regresarAlLogin() {
+    localStorage.removeItem('token');
+    window.location.replace('login.html');
+  }
+ 
+  function mostrarMensaje(texto) {
+    mensaje.textContent = texto;
+  }
+</script>
+ 
+</body>
+</html>
