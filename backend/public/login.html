@@ -117,7 +117,6 @@ const btnGuardar = document.getElementById('btn-guardar');
 
 btnGuardar.addEventListener('click', async () => {
 
-  // Obtener colores actuales de cada parte
 
   const usuario = {
 
@@ -129,7 +128,6 @@ btnGuardar.addEventListener('click', async () => {
 
   };
 
-  // Enviar via fetch al servidor
 
   const resp = await fetch('/api/login', {
 
