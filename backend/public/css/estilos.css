@@ -9,8 +9,6 @@ body {
   color: #222;
 }
 
-/* ---------- Header / navegación (index y entidad) ---------- */
-
 header {
   display: flex;
   justify-content: space-between;
