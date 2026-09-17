@@ -128,7 +128,7 @@ function mostrarDatosUsuario(usuario) {
 
   document.getElementById('usuario-id').textContent = usuario._id || 'No disponible';
   document.getElementById('usuario-nombre').textContent = nombre;
-  document.getElementById('usuario-correo').textContent = usuario.correo || 'No disponible';
+  document.getElementById('usuario-email').textContent = usuario.email || 'No disponible';
   document.getElementById('usuario-fecha').textContent = formatearFecha(usuario.fechaRegistro);
 }
 

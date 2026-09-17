@@ -4,7 +4,7 @@ btnGuardar.addEventListener('click', async () => {
 
   const usuario = {
     nombre: document.getElementById('nombre').value,
-    correo: document.getElementById('correo').value,
+    email: document.getElementById('email').value,
     clave: document.getElementById('clave').value,
   };
 

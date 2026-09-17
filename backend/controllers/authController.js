@@ -4,13 +4,13 @@ const Usuario = require('../models/Usuario');
 
 async function registrar(req, res) {
   try {
-    const { nombre, correo, clave } = req.body;
+    const { nombre, email, clave } = req.body;
 
     const salt = await bcrypt.genSalt(10);
 
     const hash = await bcrypt.hash(clave, salt);
 
-    const nuevoUsuario = new Usuario({ nombre, correo, clave: hash });
+    const nuevoUsuario = new Usuario({ nombre, email, clave: hash });
     await nuevoUsuario.save();
 
     res.status(201).json({ mensaje: 'Usuario registrado con éxito', id: nuevoUsuario._id });
@@ -22,9 +22,9 @@ async function registrar(req, res) {
 
 async function login(req, res) {
   try {
-    const { correo, clave } = req.body;
+    const { email, clave } = req.body;
 
-    const usuario = await Usuario.findOne({ correo });
+    const usuario = await Usuario.findOne({ email });
     if (!usuario) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
